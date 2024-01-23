@@ -1,3 +1,4 @@
+
 public class dogluncher {
     public static  void main(String[] args) {
         dog d = new dog(51);
