@@ -106,199 +106,68 @@ public class Model extends Observable {
      *    value, then the leading two tiles in the direction of motion merge,
      *    and the trailing tile does not.
      * */
+
     public boolean tilt(Side side) {
         boolean changed;
         changed = false;
 
-        if(side == Side.SOUTH){
-            board.setViewingPerspective(side.SOUTH);
-        }else if(side == Side.EAST){
-            board.setViewingPerspective(side.EAST);
-        } else if (side == Side.WEST) {
-            board.setViewingPerspective(side.WEST);
-        }else{
-            board.setViewingPerspective(side.NORTH);
-        }
-
         // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
-        int boardSize = board.size();
-        for (int n = 0; n < boardSize; n++) {
-            int i = lastnotnull(board , n);
-            changed |= processTilesInDirection(side, n , i);
-            if (board.tile(n,i) == null){
-                changed = false;
-            }
-            if(changed){
-                break;
-            }
-        }
 
-        if(changed) {
-            Board newBoard1 = new Board(board.size());
+        board.setViewingPerspective(side);
 
-            for (int n = 0; n < boardSize; n++) {
-                int i = boardSize - 1;
-                int merge_time = 0;
-                while(i >= 0) {
-                    int emptyNumber = emptyCell(board, n, i);
-                    Tile t = board.tile(n, i);
-                    if (board.tile(n, i) != null) {
-                        if (emptyNumber != 0) {
-                            if (isequal(board, n, i)) {
-                                int x = equallehgth(board, n, i);
-                                Tile y = board.tile(n, i + x);
-                                int emptynum = emptyCell(board, n, i) - emptyCell(board,n,i+x);
-                                t.merge(n, i, y);
-                                if ( emptynum > 0) {
-                                    if (emptynum == emptyCell(board,n,i)){
-                                        if(merge_time > 0){
-                                            newBoard1.addTile(Tile.create(t.value() * 2, n , boardSize - 1));
-                                        }else {
-                                            newBoard1.addTile(Tile.create(t.value() * 2, n, boardSize - 1 ));
-                                        }
-                                    }else {
-                                        if (merge_time > 0) {
-                                            newBoard1.addTile(Tile.create(t.value() * 2, n, i + x + emptynum + merge_time));
-                                        } else {
-                                            newBoard1.addTile(Tile.create(t.value() * 2, n, i + x + emptynum));
-                                        }
-                                    }
-                                }
-                                if(emptynum == 0){
-                                    if(merge_time > 0){
-                                        newBoard1.addTile(Tile.create(t.value() * 2, n , i + x + merge_time + emptyNumber));
-                                    }else {
-                                        newBoard1.addTile(Tile.create(t.value() * 2, n, i + x + emptyNumber));
-                                    }
-                                }
-                                score += t.value() * 2;
-                                merge_time += 1;
-                            } else{
-                                t.move(n, i + emptyNumber);
-                                if(merge_time > 0){
-                                    newBoard1.addTile(Tile.create(t.value(), n , i + emptyNumber + merge_time));
-                                }else {
-                                    newBoard1.addTile(Tile.create(t.value(), n, i + emptyNumber));
-                                }
+        for (int col = 0; col < board.size(); col += 1) {
+            for (int row = board.size() - 1; row >= 0; row -= 1) {
+                Tile t1 = board.tile(col, row);
+                if (t1 != null) {
+                    for (int row2 = row - 1; row2 >= 0; row2 -= 1) {
+                        Tile t2 = board.tile(col, row2);
+                        if (t2 != null) {
+                            if (t1.value() == t2.value()) {
+                                board.move(col, row, t2);
+                                changed = true;
+                                score += 2 * t1.value();
+                                row = row2;
+                                break;
+                            } else {
+                                break;
                             }
                         } else {
-                            if (isequal(board, n, i)) {
-                                int x = equallehgth(board, n, i);
-                                Tile y = board.tile(n, i + x);
-                                t.merge(n, i, y);
-                                score += t.value() * 2;
-                                if(merge_time > 0){
-                                    newBoard1.addTile(Tile.create(t.value() * 2, n , i + x + merge_time));
-                                }else {
-                                    newBoard1.addTile(Tile.create(t.value() * 2, n, i + x));
-                                }
-                                merge_time += 1;
-                            }
-                            else{
-                                if(merge_time > 0){
-                                    newBoard1.addTile(Tile.create(t.value(), n , i + emptyNumber + merge_time));
-                                }else{
-                                    newBoard1.addTile(Tile.create(t.value(), n ,i));
-                                }
-                            }
+                            continue;
                         }
                     }
-                    i --;
+                }
+
+            }
+        }
+        //先合并再移动
+        //得仔细了解函数作用
+
+        for (int col = 0; col < board.size(); col += 1) {
+            for (int row = board.size() - 1; row >= 0; row -= 1) {
+                Tile t1 = board.tile(col, row);
+                if (t1 == null) {
+                    for (int row2 = row - 1; row2 >= 0; row2 -= 1) {
+                        Tile t2 = board.tile(col, row2);
+                        if (t2 != null) {
+                            board.move(col, row, t2);
+                            changed = true;
+                            break;
+                        }
+                    }
                 }
             }
-            board = newBoard1;
         }
-        if(side == Side.SOUTH){
-            board.setViewingPerspective(side.SOUTH);
-        }else if(side == Side.EAST){
-            board.setViewingPerspective(side.WEST);
-        } else if (side == Side.WEST) {
-            board.setViewingPerspective(side.EAST);
-        }else{
-            board.setViewingPerspective(side.NORTH);
-        }
-
+        board.setViewingPerspective(Side.NORTH);
         checkGameOver();
         if (changed) {
             setChanged();
         }
         return changed;
-
-    }
-
-    public int lastnotnull(Board b , int n){
-        for(int x = 0;x < b.size();x ++){
-            if(b.tile(n,x) != null){
-                return x;
-            }
-        }
-        return 0;
-    }
-
-    public boolean isequal(Board b, int n, int i) {
-        if (b.tile(n, i) == null) {
-            return false;
-        }
-        int x = 0;
-
-        for (int j = i + 1; j < board.size(); j++) {
-            Tile currentTile = b.tile(n, j);
-            if (currentTile != null) {
-                if (b.tile(n, i).value() == currentTile.value()) {
-                    x += 1;
-                }
-            }
-        }
-        if (x % 2 != 0 && emptyCell(b, n , i) < b.size() - 1 - i){
-            return true;
-        }
-        return false;
-    }
-
-    public int equallehgth(Board b ,int n ,int i){
-        int x = i;
-        if (isequal(b ,n ,i)){
-            i += 1;
-            while(i < b.size()){
-                if (b.tile(n,i) != null){
-                    return i - x;
-                }
-                i += 1;
-            }
-        }
-        return 0;
-    }
-
-    private boolean processTilesInDirection(Side side, int n,int i) {
-        int equalNum = equalnum(board, n,i);
-        int emptyCellNum = emptyCell(board, n,i);
-        return equalNum + emptyCellNum != 0;
     }
 
 
-    public int equalnum(Board b ,int n,int x) {
-        int num1 = 0;
-        while( x < b.size()) {
-            if (isequal(b, n, x)) {
-                num1 += 1;
-            }
-            x ++;
-        }
-        return num1;
-    }
-
-    public int emptyCell(Board b ,int n,int i){
-        int num = 0;
-        while(i < b.size() - 1){
-            if (b.tile(n,i + 1) == null){
-                num += 1;
-            }
-            i += 1;
-        }
-        return num;
-    }
 
 
     /** Checks if the game is over and sets the gameOver variable

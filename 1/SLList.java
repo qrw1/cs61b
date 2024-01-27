@@ -1,43 +1,43 @@
-public class SLList {
-    private static class IntNode {//少 time
-        public int item;
-        public IntNode next;
+public class SLList<LochNess> {
+    private class StuffNode {//少 time
+        public LochNess item;
+        public StuffNode next;
 
-        public IntNode(int i,IntNode n ){
+        public StuffNode(LochNess i,StuffNode n ){
             item = i;
             next = n;
         }
     }
-    private IntNode sentinel;
+    private StuffNode sentinel;
     private int size;
 
-    public SLList(){
-        sentinel = new IntNode(63,null);
-        size = 0;
-    }
+//    public SLList(){
+//        sentinel = new StuffNode(63,null);
+//        size = 0;
+//    }
 
-    public SLList(int x) {
-        sentinel = new IntNode(63,null);
-        sentinel.next = new IntNode(x,null);
+    public SLList(LochNess x) {
+//        sentinel = new StuffNode(63,null);
+        sentinel.next = new StuffNode(x,null);
         size = 1;
     }
     public static void main(String[] args){
         SLList L = new SLList(10);
     }
 
-    public void addFirst(int x){
-        sentinel.next = new IntNode(x,sentinel.next);
+    public void addFirst(LochNess x){
+        sentinel.next = new StuffNode(x,sentinel.next);
          size += 1;
     }
 
-    public void addlast(int x){
+    public void addlast(LochNess x){
 
-        IntNode p = sentinel;
+        StuffNode p = sentinel;
         size += 1;
         while (p.next != null){
             p = p.next;
         }
-        p.next = new IntNode(x,null);
+        p.next = new StuffNode(x,null);
     }
 
 //    private  static  int Size(IntNode p){
@@ -50,7 +50,11 @@ public class SLList {
         return size;
     }
 
-    public int getFirst(){
+    public LochNess getFirst(){
         return sentinel.next.item;
     }
+
+
 }
+
+
