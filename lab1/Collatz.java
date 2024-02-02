@@ -11,23 +11,20 @@ public class Collatz {
 //            return 3 * n + 1;
 //        }
 //    }
-    public static int nextNumber(int n) {
-        if (n  == 128) {
-            return 1;
-        } else if (n == 5) {
-            return 3 * n + 1;
-        } else {
-            return n * 2;
+        /** Buggy implementation of nextNumber! */
+        public static int nextNumber(int n) {
+            return n % 2 == 0 ? n/2 : 3*n + 1;
         }
-    }
-    public static void main(String[] args) {
-        int n = 5;
-        System.out.print(n + " ");
-        while (n != 1) {
-            n = nextNumber(n);
+
+        public static void main(String[] args) {
+            int n = 5;
             System.out.print(n + " ");
+            while (n != 1) {
+                n = nextNumber(n);
+                System.out.print(n + " ");
+            }
+            System.out.println();
         }
-        System.out.println();
     }
-}
+
 

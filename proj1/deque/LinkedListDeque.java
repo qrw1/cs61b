@@ -50,16 +50,9 @@ public class LinkedListDeque<T> implements Deque<T>, Iterable<T> {
 
 
     public void printDeque() {
-        Node X = sentinel.next;
-        StringBuilder stringsb = new StringBuilder();
         for (int i = 0; i < size; i += 1) {
-            if (X.item != null) {
-                stringsb.append(X.item);
-                stringsb.append(" ");
-            }
-            X = X.next;
+            System.out.print(get(i) + " ");
         }
-        System.out.println(stringsb);
     }
 
 
