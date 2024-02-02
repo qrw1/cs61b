@@ -3,21 +3,24 @@ package deque;
 
 import java.util.Iterator;
 
-public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
+public class ArrayDeque<T> {
     private T [] items;
     private  int size;
     private int nextfirst;
     private int nextlast;
+    public boolean isEmpty() {
+        return size() == 0;
+    }
 
 
-    public ArrayDeque(){
+    public ArrayDeque() {
         items = (T[]) new Object[8];
         size = 0;
         nextfirst = 4;
         nextlast = 5;
     }
 
-    private void resize(int capacity){
+    private void resize(int capacity) {
         T[] a = (T[]) new Object[capacity];
         int ind = 0;
         for (int i = 0; i < size; i += 1) {
@@ -38,21 +41,22 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
     }
 
 
-    public void addLast(T x){
-        if(items.length == size){
+    public void addLast(T x) {
+        if(items.length == size) {
             resize(size * 2);
         }
         items[nextlast] = x;
         size += 1;
-        if(nextlast == items.length - 1){
+        if(nextlast == items.length - 1) {
             nextlast = 0;
+        } else {
+            nextlast += 1;
         }
-        else{nextlast += 1;}
 
     }
 
-    public void addFirst(T x){
-        if(items.length == size){
+    public void addFirst(T x) {
+        if(items.length == size) {
             resize(size * 2);
         }
         items[nextfirst] = x;
@@ -60,7 +64,8 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
         if(nextfirst == 0){
             nextfirst = items.length - 1;
         }else{
-        nextfirst -= 1;}
+            nextfirst -= 1;
+        }
     }
 
     public T getFirst() {
