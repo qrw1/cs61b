@@ -3,24 +3,19 @@ import java.util.Iterator;
 
 
 public class LinkedListDeque<T>  implements Deque<T>, Iterable<T> {
-    public int size;
-
-    private Node sentinel;
-    public boolean isEmpty() {
-        return size() == 0;
-    }
 
     private class Node {
-        public T item;
-        public Node next;
-        public Node prev;
+        private Node prev;
+        private T item;
+        private Node next;
 
-        public Node(T i, Node n) {
+        private Node(T i, Node n) {
             item = i;
             next = n;
         }
     }
-
+    private Node sentinel;
+    private int size;
 
     public LinkedListDeque() {
         sentinel = new Node(null,null);

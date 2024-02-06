@@ -9,9 +9,7 @@ public class ArrayDeque<T> implements Deque<T>, Iterable<T> {
     private  int size;
     private int nextfirst;
     private int nextlast;
-    public boolean isEmpty() {
-        return size() == 0;
-    }
+
 
 
     public ArrayDeque() {
