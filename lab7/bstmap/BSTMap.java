@@ -42,7 +42,7 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
         return size;
     }
 
-    public Node sch(Node node, K key){
+    private Node sch(Node node, K key){
         if(node == null){
             return null;
         }
@@ -147,7 +147,7 @@ public class BSTMap<K extends Comparable<K>, V> implements Map61B<K, V> {
         return node;
     }
 
-    public Node getMinChild(Node node){
+    private Node getMinChild(Node node){
         if (node.left == null) {
             return node;
         }
