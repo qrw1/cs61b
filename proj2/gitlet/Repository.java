@@ -9,11 +9,6 @@ import java.util.function.Consumer;
 import static gitlet.Utils.*;
 import static gitlet.MyUtils.*;
 
-/** 表示一个 gitlet 仓库。
- *  TODO: 在这里提供该类的其他高层级功能描述。
- *
- *  @author TODO
- */
 public class Repository {
 
     public static final String init_breach_name = "master";
@@ -76,8 +71,6 @@ public class Repository {
 
     /**
      * 获取指定分支头部的提交对象。
-     * @param branchName 分支的名称。
-     * @return 分支头部的提交对象。
      */
     private static Commit getBranchHeadCommit(String branchName) {
         File branchHeadFile = getBranchHeadFile(branchName);
@@ -86,8 +79,6 @@ public class Repository {
 
     /**
      * 获取指定分支头部的提交对象。
-     * @param branchHeadFile 包含分支头部提交ID的文件。
-     * @return 分支头部的提交对象。
      */
     private static Commit getBranchHeadCommit(File branchHeadFile) {
         String HEADCommitId = readContentsAsString(branchHeadFile);
@@ -117,8 +108,6 @@ public class Repository {
 
     /**
      * 获取当前工作目录中指定文件名的文件对象。
-     * @param fileName 文件的名称。
-     * @return 文件对象。
      */
     private static File getFileFromCWD(String fileName) {
         return Paths.get(fileName).isAbsolute()
@@ -128,7 +117,6 @@ public class Repository {
 
     /**
      * 将指定文件添加到暂存区。
-     * @param filename 要添加的文件名。
      */
     public void add(String filename){
         File file = getFileFromCWD(filename);
@@ -243,7 +231,7 @@ public class Repository {
         }
     }
 
-    public void find(String commes){
+    public static void find(String commes){
         StringBuilder resultBuilder = new StringBuilder();
         forEachCommit(commit -> {if(commit.getmessage().equals(commes)) {
             resultBuilder.append(commit.getId()).append("\n");
@@ -291,10 +279,7 @@ public class Repository {
     }
 
 
-        /**
-         * 初始化并返回暂存区。
-         * @return 暂存区。
-         */
+
     private StagingArea stagingArea() {
         if (index.exists()) {
             return StagingArea.fromFile();

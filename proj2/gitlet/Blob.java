@@ -2,7 +2,6 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
-import java.nio.charset.StandardCharsets;
 
 import static gitlet.MyUtils.getfile;
 import static gitlet.MyUtils.saveobjectfile;

@@ -1,33 +1,30 @@
 package gitlet;
 
-import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 
 import static gitlet.MyUtils.exit;
 
 
-/** Driver class for Gitlet, a subset of the Git version-control system.
- *  @author TODO
- */
+
 public class Main {
 
-    /** Usage: java gitlet.Main ARGS, where ARGS contains
-     *  <COMMAND> <OPERAND1> <OPERAND2> ... 
-     */
-    public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
+    public static void main(String[] args){
+        if (args.length == 0) {
+            exit("Please enter a command.");
+        }
 
         String firstArg = args[0];
-        switch(firstArg) {
-            case "init":
+        switch (firstArg) {
+            case "init" -> {
+                validateNumArgs(args, 1);
                 Repository.init();
-                break;
-            case "add":
+            }
+            case "add" -> {
                 Repository.checkWorkingDir();
                 validateNumArgs(args, 2);
                 String fileName = args[1];
                 new Repository().add(fileName);
-                break;
-            case "commit":
+            }
+            case "commit" -> {
                 Repository.checkWorkingDir();
                 validateNumArgs(args, 2);
                 String message = args[1];
@@ -35,31 +32,37 @@ public class Main {
                     exit("Please enter a commit message.");
                 }
                 new Repository().commit(message);
-                break;
-            case "rm":
+            }
+            case "rm" -> {
                 Repository.checkWorkingDir();
                 validateNumArgs(args, 2);
-                String filename = args[1];
-                new Repository().remove(filename);
-                break;
-            case "log":
+                String fileName = args[1];
+                new Repository().remove(fileName);
+            }
+            case "log" -> {
                 Repository.checkWorkingDir();
+                validateNumArgs(args, 1);
                 new Repository().log();
-                break;
-            case "global-log":
+            }
+            case "global-log" -> {
                 Repository.checkWorkingDir();
-                new Repository().globalLog();
-                break;
-            case "find":
+                validateNumArgs(args, 1);
+                Repository.globalLog();
+            }
+            case "find" -> {
                 Repository.checkWorkingDir();
                 validateNumArgs(args, 2);
-                String commitmes = args[1];
-                new Repository().find(commitmes);
-                break;
-            case "status":
+                String message = args[1];
+                if (message.length() == 0) {
+                    exit("Found no commit with that message.");
+                }
+                Repository.find(message);
+            }
+            case "status" -> {
                 Repository.checkWorkingDir();
+                validateNumArgs(args, 1);
                 new Repository().status();
-                break;
+            }
         }
     }
 

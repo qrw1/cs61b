@@ -12,12 +12,7 @@ import static gitlet.MyUtils.saveobjectfile;
 import static gitlet.Utils.readObject;
 import static gitlet.Utils.sha1;
 
-/** Represents a gitlet commit object.
- *  TODO: It's a good idea to give a description here of what else this Class
- *  does at a high level.
- *
- *  @author TODO
- */
+
 public class Commit implements Serializable{
     private String message;
     private String id;
