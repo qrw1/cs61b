@@ -1,55 +1,98 @@
 package gitlet;
 
-
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
-
+import java.util.function.Supplier;
 
 import static gitlet.Utils.*;
 
+/**
+ * Utility functions.
+ *
+ * @author Exuanbo
+ */
 public class MyUtils {
 
 
-    public static void mkdir(File dir){
-        if(!dir.mkdir()){
+    /**
+     * Create a directory from the File object.
+     *
+     * @param dir Directory File instance
+     */
+    public static void mkdir(File dir) {
+        if (!dir.mkdir()) {
             throw new IllegalArgumentException(String.format("mkdir: %s: Failed to create.", dir.getPath()));
         }
-        //将file与dir区分；
     }
 
-    public static void exit(String message, Object ... args){
-        message(message,args);
-        System.exit(0);
-    }
-
-    public static File getfile(String id){
-        String fileName = getfilename(id);
-        String dirName = getfiledirname(id);
-        return join(Repository.object_dir, dirName, fileName);
-    }
-
-    public static String getfilename(String id){
-        return id.substring(2);
-    }
-
-    public static String getfiledirname(String id){
-        return id.substring(0,2);
-    }
-
+    /**
+     * Delete the file.
+     *
+     * @param file File instance
+     */
     public static void rm(File file) {
         if (!file.delete()) {
-            //如果没删除成功
             throw new IllegalArgumentException(String.format("rm: %s: Failed to delete.", file.getPath()));
         }
     }
 
-
-    public static void saveobjectfile(File file, Serializable commit){
-        File dir = file.getParentFile();
-        if(!dir.mkdir()){
-            mkdir(dir);
-        }
-        writeObject(file,commit);
+    /**
+     * Print a message and exit with status code 0.
+     *
+     * @param message String to print
+     * @param args    Arguments referenced by the format specifiers in the format string
+     */
+    public static void exit(String message, Object... args) {
+        message(message, args);
+        System.exit(0);
     }
 
+    /**
+     * Get a File instance with the path generated from SHA1 id in the objects folder.
+     *
+     * @param id SHA1 id
+     * @return File instance
+     */
+    public static File getObjectFile(String id) {
+        String dirName = getObjectDirName(id);
+        String fileName = getObjectFileName(id);
+        return join(Repository.OBJECTS_DIR, dirName, fileName);
+    }
+
+    /**
+     * Get directory name from SHA1 id in the objects folder.
+     *
+     * @param id SHA1 id
+     * @return Name of the directory
+     */
+    public static String getObjectDirName(String id) {
+        return id.substring(0, 2);
+    }
+
+    /**
+     * Get file name from SHA1 id.
+     *
+     * @param id SHA1 id
+     * @return Name of the file
+     */
+    public static String getObjectFileName(String id) {
+        return id.substring(2);
+    }
+
+    /**
+     * Save the serializable object to the file path.
+     * Create a parent directory if not exists.
+     *
+     * @param file File instance
+     * @param obj  Serializable object
+     */
+    public static void saveObjectFile(File file, Serializable obj) {
+        File dir = file.getParentFile();
+        if (!dir.exists()) {
+            mkdir(dir);
+        }
+        writeObject(file, obj);
+    }
 }

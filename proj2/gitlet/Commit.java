@@ -4,93 +4,169 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static gitlet.MyUtils.getfile;
-import static gitlet.MyUtils.saveobjectfile;
+import static gitlet.MyUtils.*;
 import static gitlet.Utils.readObject;
 import static gitlet.Utils.sha1;
 
 
-public class Commit implements Serializable{
-    private String message;
-    private String id;
-    private List<String> parent;
-    private Map<String, String> tracked;
-    private Date timepointer;
-    private File file;
+public class Commit implements Serializable {
 
-    public Commit(){
-        timepointer = new Date(0);
-        message = "initcommit";
-        id = getId();
-        parent = new ArrayList<>();
-        tracked = new HashMap<>();
-        file = getfile(id);
-    }
+    /**
+     * The created date.
+     */
+    private final Date date;
 
-    public Commit(String message, List<String> parent, Map<String,String> link){
-        timepointer = new Date();
+    /**
+     * The message of this Commit.
+     */
+    private final String message;
+
+    /**
+     * The parent commits SHA1 id.
+     */
+    private final List<String> parents;
+
+    /**
+     * The tracked files Map with file path as key and SHA1 id as value.
+     */
+    private final Map<String, String> tracked;
+
+    /**
+     * The SHA1 id.
+     */
+    private final String id;
+
+    /**
+     * The file of this instance with the path generated from SHA1 id.
+     */
+    private final File file;
+
+    public Commit(String message, List<String> parents, Map<String, String> trackedFilesMap) {
+        date = new Date();
         this.message = message;
-        this.parent = parent;
-        this.tracked = link;
-        id = getId();
-        file = getfile(id);
+        this.parents = parents;
+        this.tracked = trackedFilesMap;
+        id = generateId();
+        file = getObjectFile(id);
     }
 
-    public String gettimepointer(){
-        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        return (dateFormat.format(this.timepointer));
+    /**
+     * Initial commit.
+     */
+    public Commit() {
+        date = new Date(0);
+        message = "initial commit";
+        parents = new ArrayList<>();
+        tracked = new HashMap<>();
+        id = generateId();
+        file = getObjectFile(id);
     }
 
-    public String getId(){
-        return sha1(gettimepointer(), message,tracked.toString(),parent.toString());
+    /**
+     * Get a Commit instance from the file with the SHA1 id.
+     *
+     * @param id SHA1 id
+     * @return Commit instance
+     */
+    public static Commit fromFile(String id) {
+        return readObject(getObjectFile(id), Commit.class);
     }
 
-    public List<String> getParent(){
-        return parent;
+    /**
+     * Generate a SHA1 id from timestamp, message, parents Array and tracked files Map.
+     *
+     * @return SHA1 id
+     */
+    private String generateId() {
+        return sha1(getTimestamp(), message, parents.toString(), tracked.toString());
     }
 
-    public Date getdate(){
-        return timepointer;
+    /**
+     * Save this Commit instance to file in objects folder.
+     */
+    public void save() {
+        saveObjectFile(file, this);
     }
 
-    public String getmessage(){
+    /**
+     * Get the Date instance when the commit is created.
+     *
+     * @return Date instance
+     */
+    public Date getDate() {
+        return date;
+    }
+
+    /**
+     * Get the timestamp.
+     *
+     * @return Date and time
+     */
+    public String getTimestamp() {
+        // Thu Jan 1 00:00:00 1970 +0000
+        DateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.ENGLISH);
+        return dateFormat.format(date);
+    }
+
+    /**
+     * Get the commit message.
+     *
+     * @return Commit message
+     */
+    public String getMessage() {
         return message;
     }
 
-    public void save(){
-        saveobjectfile(file,this);
+    /**
+     * Get the parent commit ids.
+     *
+     * @return Array of parent commit ids.
+     */
+    public List<String> getParents() {
+        return parents;
     }
 
+    /**
+     * Get the tracked files Map with file path as key and SHA1 id as value.
+     *
+     * @return Map with file path as key and SHA1 id as value
+     */
     public Map<String, String> getTracked() {
         return tracked;
     }
 
 
+    /**
+     * Get the SHA1 id.
+     *
+     * @return SHA1 id
+     */
+    public String getId() {
+        return id;
+    }
 
-    public String getlog(){
-        StringBuilder print = new StringBuilder();
-        print.append("===").append("\n");
-        print.append("commit").append(" ").append(id).append("\n");
-        if(parent.size() > 1){
-            print.append("Merge:");
-            for (String parent : parent) {
-                print.append(" ").append(parent, 0, 7);
+    /**
+     * Get the commit log.
+     *
+     * @return Log content
+     */
+    public String getLog() {
+        StringBuilder logBuilder = new StringBuilder();
+        logBuilder.append("===").append("\n");
+        logBuilder.append("commit").append(" ").append(id).append("\n");
+        if (parents.size() > 1) {
+            logBuilder.append("Merge:");
+            for (String parent : parents) {
+                logBuilder.append(" ").append(parent, 0, 7);
             }
-            print.append("\n");
+            logBuilder.append("\n");
         }
-        print.append("Date:").append(" ").append(gettimepointer()).append("\n");
-        print.append(message).append("\n");
-        return print.toString();
+        logBuilder.append("Date:").append(" ").append(getTimestamp()).append("\n");
+        logBuilder.append(message).append("\n");
+        return logBuilder.toString();
     }
-
-
-    public static Commit fromFile(String id) {
-        return readObject(getfile(id), Commit.class);
-    }
-    //，它采用了 getfile(id) 方法获取存储特定提交的文件，然后调用 readObject()
-    // 方法从该文件中读取提交对象。这个提交对象被转换成 Commit 类型，并返回给调用者。
-
 }

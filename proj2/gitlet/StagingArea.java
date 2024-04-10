@@ -7,48 +7,130 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-
+import static gitlet.MyUtils.rm;
 import static gitlet.Utils.readObject;
 import static gitlet.Utils.writeObject;
-import static gitlet.MyUtils.*;
 
+/**
+ * The staging area representation.
+ *
+ * @author Exuanbo
+ */
 public class StagingArea implements Serializable {
 
-    public final Map<String,String> added = new HashMap<>();
-    public final Set<String> removed = new HashSet<>();
+    /**
+     * The added files Map with file path as key and SHA1 id as value.
+     */
+    private final Map<String, String> added = new HashMap<>();
+
+    /**
+     * The removed files Set with file path as key.
+     */
+    private final Set<String> removed = new HashSet<>();
+
+    /**
+     * The tracked files Map with file path as key and SHA1 id as value.
+     */
     private transient Map<String, String> tracked;
-    //提交
 
-    public boolean add(File file){
-        // 获取文件路径
-        String filepath = file.getPath();
+    /**
+     * Get a StagingArea instance from the file INDEX.
+     *
+     * @return StagingArea instance
+     */
+    public static StagingArea fromFile() {
+        return readObject(Repository.INDEX, StagingArea.class);
+    }
 
-        // 创建一个 Blob 对象来表示文件内容
+    /**
+     * Save this instance to the file INDEX.
+     */
+    public void save() {
+        writeObject(Repository.INDEX, this);
+    }
+
+    /**
+     * Get added files Map.
+     *
+     * @return Map with file path as key and SHA1 id as value.
+     */
+    public Map<String, String> getAdded() {
+        return added;
+    }
+
+    /**
+     * Get removed files Set.
+     *
+     * @return Set of files paths.
+     */
+    public Set<String> getRemoved() {
+        return removed;
+    }
+
+    /**
+     * Set tracked files.
+     *
+     * @param filesMap Map with file path as key and SHA1 id as value.
+     */
+    public void setTracked(Map<String, String> filesMap) {
+        tracked = filesMap;
+    }
+
+    /**
+     * Tells whether the staging area is clean,
+     * which means no file is added, modified, or removed.
+     *
+     * @return true if is clean
+     */
+    public boolean isClean() {
+        return added.isEmpty() && removed.isEmpty();
+    }
+
+    /**
+     * Clear the staging area.
+     */
+    public void clear() {
+        added.clear();
+        removed.clear();
+    }
+
+    /**
+     * Perform a commit. Return tracked files Map after commit.
+     *
+     * @return Map with file path as key and SHA1 id as value.
+     */
+    public Map<String, String> commit() {
+        tracked.putAll(added);
+        for (String filePath : removed) {
+            tracked.remove(filePath);
+        }
+        clear();
+        return tracked;
+    }
+
+    /**
+     * Add file to the staging area.
+     *
+     * @param file File instance
+     * @return true if the staging area is changed
+     */
+    public boolean add(File file) {
+        String filePath = file.getPath();
+
         Blob blob = new Blob(file);
-        // 获取文件内容的 ID
         String blobId = blob.getId();
-        // 获取追踪列表中该文件的 ID
-        //追踪该文件之前是否有过
-        String trackedBlobId = tracked.get(filepath);
 
-        // 如果文件已经在追踪列表中，并且文件内容没有发生变化
-        if (trackedBlobId != null && trackedBlobId.equals(blobId)) {
-            // 如果要添加的文件的 ID 与 Blob 中已经储存的 ID 一致，从暂存区域移除
-            // 从已经添加文件列表中移除要添加的文件
-            if (added.remove(filepath) != null) {
-                //在added里面
-                return true;
+        String trackedBlobId = tracked.get(filePath);
+        if (trackedBlobId != null) {
+            if (trackedBlobId.equals(blobId)) {
+                if (added.remove(filePath) != null) {
+                    return true;
+                }
+                return removed.remove(filePath);
             }
-            // 从已移除文件列表中移除要添加的文件
-            //在remove里面
-            return removed.remove(filepath);
         }
 
-        // 如果文件不在追踪列表中，或者文件内容发生了变化
-        // 将文件添加到已经添加文件列表中
-        String prevBlobId = added.put(filepath, blobId);
-        //返回之前与该键相关联的值
-        // 如果文件已经添加到了已经添加的文件列表中，并且再次调用 add 方法时文件内容没有发生变化
+        String prevBlobId = added.put(filePath, blobId);
         if (prevBlobId != null && prevBlobId.equals(blobId)) {
             return false;
         }
@@ -59,56 +141,26 @@ public class StagingArea implements Serializable {
         return true;
     }
 
-    public boolean remove(File file){
-        String filepath = file.getPath();
-        String addedBlobId = added.remove(filepath);
-        String trackedBlobId = tracked.get(filepath);
-        if(trackedBlobId != null){
-            if(file.exists()){
-                rm(file);
-            }
-            return removed.add(filepath);
+    /**
+     * Remove file.
+     *
+     * @param file File instance
+     * @return true if the staging area is changed
+     */
+    public boolean remove(File file) {
+        String filePath = file.getPath();
 
+        String addedBlobId = added.remove(filePath);
+        if (addedBlobId != null) {
+            return true;
         }
 
-        if(addedBlobId != null){
-            //被暂存在added里面
-            return true;
+        if (tracked.get(filePath) != null) {
+            if (file.exists()) {
+                rm(file);
+            }
+            return removed.add(filePath);
         }
         return false;
     }
-
-    public void clear(){
-        added.clear();
-        removed.clear();
-    }
-
-    public Map<String, String> commit() {
-        tracked.putAll(added);
-        for (String filePath : removed) {
-            tracked.remove(filePath);
-        }
-        clear();
-        return tracked;
-    }
-
-
-    public static StagingArea fromFile() {
-        return readObject(Repository.index, StagingArea.class);
-    }
-
-    public void setTracked(Map<String, String> filesMap) {
-        tracked = filesMap;
-    }
-    public void save() {
-        writeObject(Repository.index, this);
-    }
-
-
-    public boolean isClan(){
-        return added.isEmpty() && removed.isEmpty();
-    }
-
-
-
 }

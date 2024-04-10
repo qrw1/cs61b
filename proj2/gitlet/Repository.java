@@ -1,76 +1,170 @@
 package gitlet;
 
-
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.Consumer;
 
-import static gitlet.Utils.*;
 import static gitlet.MyUtils.*;
+import static gitlet.Utils.*;
 
+/**
+ * Represents a gitlet repository.
+ *
+ * @author Exuanbo
+ */
 public class Repository {
 
-    public static final String init_breach_name = "master";
-    private static final String head_branch_ref_prefix = "ref: refs/heads/";
-    public static final File cwd = new File(System.getProperty("user.dir"));
-    public static final File gitlet_dir = join(cwd, ".gitlet");
-    public static final File head = join(gitlet_dir,"heads");
-    public static final File object_dir = join(gitlet_dir,"object");
-    private static final File refs_dir = join(gitlet_dir, "refs");
-    private static final File breach_head_dir = join(refs_dir, "heads");
-    public static final File index = join(gitlet_dir, "index");
+    /**
+     * Default branch name.
+     */
+    private static final String DEFAULT_BRANCH_NAME = "master";
 
     /**
-     * 检查当前工作目录是否在一个初始化的 Gitlet 仓库内。
+     * HEAD ref prefix.
+     */
+    private static final String HEAD_BRANCH_REF_PREFIX = "ref: refs/heads/";
+
+    /**
+     * The current working directory.
+     */
+    private static final File CWD = new File(System.getProperty("user.dir"));
+
+    /**
+     * The .gitlet directory.
+     */
+    private static final File GITLET_DIR = join(CWD, ".gitlet");
+
+    /**
+     * The index file.
+     */
+    public static final File INDEX = join(GITLET_DIR, "index");
+
+    /**
+     * The objects directory.
+     */
+    public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
+
+    /**
+     * The HEAD file.
+     */
+    private static final File HEAD = join(GITLET_DIR, "HEAD");
+
+    /**
+     * The refs directory.
+     */
+    private static final File REFS_DIR = join(GITLET_DIR, "refs");
+
+    /**
+     * The heads directory.
+     */
+    private static final File BRANCH_HEADS_DIR = join(REFS_DIR, "heads");
+
+    /**
+     * Files in the current working directory.
+     */
+    private static final File[] currentFiles = CWD.listFiles(File::isFile);
+
+    /**
+     * The current branch name.
+     */
+    public final String currentBranch(){
+        String headstring = readContentsAsString(HEAD);
+        return headstring.replace(HEAD_BRANCH_REF_PREFIX, "");
+    }
+    /**
+     * The commit that HEAD points to.
+     */
+
+
+    public final Commit HEADCommit = getBranchHeadCommit(currentBranch());
+    /**
+     * The staging area instance. Initialized in the constructor.
+     */
+
+    private final StagingArea stagingArea() {
+        if (INDEX.exists()) {
+            return StagingArea.fromFile();
+        } else {
+            return new StagingArea();
+        }
+    }
+
+    /**
+     * Exit if the repository at the current working directory is not initialized.
      */
     public static void checkWorkingDir() {
-        if (!(gitlet_dir.exists() && gitlet_dir.isDirectory())) {
+        if (!(GITLET_DIR.exists() && GITLET_DIR.isDirectory())) {
             exit("Not in an initialized Gitlet directory.");
         }
     }
 
-    public final String currentbranch(){
-        String headstring = readContentsAsString(head);
-        return headstring.replace(head_branch_ref_prefix, "");
-    }
-
-    public final Commit HEADcommit = getBranchHeadCommit(currentbranch());
-
     /**
-     * 初始化一个新的 Gitlet 仓库。
+     * Initialize a repository at the current working directory.
+     *
+     * <pre>
+     * .gitlet
+     * ├── HEAD
+     * ├── objects
+     * └── refs
+     *     └── heads
+     * </pre>
      */
-    public static void init(){
-        if(gitlet_dir.exists()){
+    public static void init() {
+        if (GITLET_DIR.exists()) {
             exit("A Gitlet version-control system already exists in the current directory.");
         }
-        mkdir(gitlet_dir);
-        mkdir(refs_dir);
-        mkdir(object_dir);
-        mkdir(breach_head_dir);
+        mkdir(GITLET_DIR);
+        mkdir(REFS_DIR);
+        mkdir(BRANCH_HEADS_DIR);
+        mkdir(OBJECTS_DIR);
+        setCurrentBranch(DEFAULT_BRANCH_NAME);
         createInitialCommit();
-        setCurrentBranch(init_breach_name);
     }
 
     /**
-     * 设置当前分支为指定的分支名称。
-     * @param branchName 要设置为当前分支的分支名称。
+     * Print all commit logs ever made.
+     */
+    public static void globalLog() {
+        StringBuilder logBuilder = new StringBuilder();
+        // As the project spec goes, the runtime should be O(N) where N is the number of commits ever made.
+        // But here I choose to log the commits in the order of created date, which has a runtime of O(NlogN).
+        forEachCommitInOrder(commit -> logBuilder.append(commit.getLog()).append("\n"));
+        System.out.print(logBuilder);
+    }
+
+    /**
+     * Print all commits that have the exact message.
+     *
+     * @param msg Content of the message
+     */
+    public static void find(String msg) {
+        StringBuilder resultBuilder = new StringBuilder();
+        forEachCommit(commit -> {
+            if (commit.getMessage().equals(msg)) {
+                resultBuilder.append(commit.getId()).append("\n");
+            }
+        });
+        if (resultBuilder.length() == 0) {
+            exit("Found no commit with that message.");
+        }
+        System.out.print(resultBuilder);
+    }
+
+    /**
+     * Set current branch.
+     *
+     * @param branchName Name of the branch
      */
     private static void setCurrentBranch(String branchName) {
-        writeContents(head, head_branch_ref_prefix + branchName);
+        writeContents(HEAD, HEAD_BRANCH_REF_PREFIX + branchName);
     }
 
     /**
-     * 创建 Gitlet 仓库的初始提交。
-     */
-    private static void createInitialCommit() {
-        Commit initialCommit = new Commit();
-        initialCommit.save();
-        setBranchHeadCommit(init_breach_name, initialCommit.getId());
-    }
-
-    /**
-     * 获取指定分支头部的提交对象。
+     * Get head commit of the branch.
+     *
+     * @param branchName Name of the branch
+     * @return Commit instance
      */
     private static Commit getBranchHeadCommit(String branchName) {
         File branchHeadFile = getBranchHeadFile(branchName);
@@ -78,7 +172,10 @@ public class Repository {
     }
 
     /**
-     * 获取指定分支头部的提交对象。
+     * Get head commit of the branch.
+     *
+     * @param branchHeadFile File instance
+     * @return Commit instance
      */
     private static Commit getBranchHeadCommit(File branchHeadFile) {
         String HEADCommitId = readContentsAsString(branchHeadFile);
@@ -86,122 +183,78 @@ public class Repository {
     }
 
     /**
-     * 将name转化为file
+     * Set branch head.
+     *
+     * @param branchName Name of the branch
+     * @param commitId   Commit SHA1 id
      */
     private static void setBranchHeadCommit(String branchName, String commitId) {
         File branchHeadFile = getBranchHeadFile(branchName);
         setBranchHeadCommit(branchHeadFile, commitId);
     }
 
-    //将name写入；
-
-    private static File getBranchHeadFile(String branchName) {
-        return join(breach_head_dir, branchName);
-    }
-
     /**
-     * 提交head
+     * Set branch head.
+     *
+     * @param branchHeadFile File instance
+     * @param commitId       Commit SHA1 id
      */
     private static void setBranchHeadCommit(File branchHeadFile, String commitId) {
         writeContents(branchHeadFile, commitId);
     }
 
     /**
-     * 获取当前工作目录中指定文件名的文件对象。
+     * Get branch head ref file in refs/heads folder.
+     *
+     * @param branchName Name of the branch
+     * @return File instance
      */
-    private static File getFileFromCWD(String fileName) {
-        return Paths.get(fileName).isAbsolute()
-                ? new File(fileName)
-                : join(cwd, fileName);
+    private static File getBranchHeadFile(String branchName) {
+        return join(BRANCH_HEADS_DIR, branchName);
     }
 
     /**
-     * 将指定文件添加到暂存区。
+     * Create an initial commit.
      */
-    public void add(String filename){
-        File file = getFileFromCWD(filename);
-        if (!file.exists()) {
-            exit("File does not exist.");
-        }
-        if (stagingArea().add(file)) {
-            stagingArea().save();
-        }
+    private static void createInitialCommit() {
+        Commit initialCommit = new Commit();
+        initialCommit.save();
+        setBranchHeadCommit(DEFAULT_BRANCH_NAME, initialCommit.getId());
     }
 
-    public void commit(String message){
-        commit(message, null);
-    }
-
-
-    private void commit(String mes,String parent){
-        if(stagingArea().isClan()){
-            exit("No changes added to the commit");
-        }
-        Map<String,String> link = stagingArea().commit();
-        List<String> parents = new ArrayList<>();
-        parents.add(HEADcommit.getId());
-        if(parent != null){
-            parents.add(parent);
-        }
-        stagingArea().save();
-        Commit com = new Commit(mes, parents, link);
-        com.save();
-        setBranchHeadCommit(currentbranch(),com.getId());
-    }
-
-    public void remove(String filename){
-        File file = getFileFromCWD(filename);
-        if (stagingArea().remove(file)) {
-            stagingArea().save();
-        }else {
-            exit("No reason to remove the file.");
-        }
-    }
-
-    public void log(){
-        Commit currentcommit = HEADcommit;
-        StringBuilder logprint = new StringBuilder();
-        while (true) {
-            logprint.append(currentcommit.getlog());
-            List<String> parentcommitid = currentcommit.getParent();
-            if(parentcommitid.size() == 0){
-                break;
-            }
-            String firstParentCommitId = parentcommitid.get(0);
-            currentcommit = Commit.fromFile(firstParentCommitId);
-        }
-        System.out.print(logprint);
-    }
-
-
-    public static void globalLog() {
-        StringBuilder logBuilder = new StringBuilder();
-        // 按照提交创建日期的逆序遍历所有提交，并将每个提交的日志信息添加到 logBuilder 中
-        forEachCommitInOrder(commit -> logBuilder.append(commit.getlog()).append("\n"));
-        //它接受一个 Commit 对象作为参数，并执行其中的操作
-        System.out.print(logBuilder);
-    }
-
-    //Consumer<Commit> 是一个函数式接口，它定义了一个接受单个参数（在这种情况下是 Commit 对象）且不返回结果的操作。
+    /**
+     * Iterate all commits in the order of created date
+     * and execute callback function on each of them.
+     *
+     * @param cb Function that accepts Commit as a single argument
+     */
     private static void forEachCommitInOrder(Consumer<Commit> cb) {
-        // 创建一个按照提交创建日期逆序排序的比较器
-        Comparator<Commit> commitComparator = Comparator.comparing(Commit::getdate).reversed();
-        // 创建一个优先队列，用于存储提交对象，并按照比较器中定义的排序规则进行排序
+        Comparator<Commit> commitComparator = Comparator.comparing(Commit::getDate).reversed();
         Queue<Commit> commitsPriorityQueue = new PriorityQueue<>(commitComparator);
-        // 调用 forEachCommit 方法，传递 commitsPriorityQueue 作为参数，以便遍历所有提交
         forEachCommit(cb, commitsPriorityQueue);
     }
-    //遍历整个树，从head的指向开始，到parents
+
+    /**
+     * Iterate all commits and execute callback function on each of them.
+     *
+     * @param cb Function that accepts Commit as a single argument
+     */
     private static void forEachCommit(Consumer<Commit> cb) {
         Queue<Commit> commitsQueue = new ArrayDeque<>();
         forEachCommit(cb, commitsQueue);
     }
 
+    /**
+     * Helper method to iterate all commits.
+     *
+     * @param cb                 Callback function executed on the current commit
+     * @param queueToHoldCommits New Queue instance to hold the commits while iterating
+     */
+    @SuppressWarnings("ConstantConditions")
     private static void forEachCommit(Consumer<Commit> cb, Queue<Commit> queueToHoldCommits) {
         Set<String> checkedCommitIds = new HashSet<>();
 
-        // 遍历所有分支头部文件，获取每个分支头部的提交对象，并将其添加到队列中
-        File[] branchHeadFiles = breach_head_dir.listFiles();
+        File[] branchHeadFiles = BRANCH_HEADS_DIR.listFiles();
         Arrays.sort(branchHeadFiles, Comparator.comparing(File::getName));
 
         for (File branchHeadFile : branchHeadFiles) {
@@ -214,78 +267,182 @@ public class Repository {
             queueToHoldCommits.add(branchHeadCommit);
         }
 
-        // 遍历队列中的提交对象，并执行回调函数
-        while (!queueToHoldCommits.isEmpty()) {
+        while (true) {
             Commit nextCommit = queueToHoldCommits.poll();
-            //从队列中获取并移除队列的头部元素
-            cb.accept(nextCommit);//接受单个参数并且不返回结果的操作。
-            // 获取当前提交的所有父提交，并将未检查过的父提交添加到队列中
-            List<String> parentCommitIds = nextCommit.getParent();
+            cb.accept(nextCommit);
+            List<String> parentCommitIds = nextCommit.getParents();
+            if (parentCommitIds.size() == 0) {
+                break;
+            }
             for (String parentCommitId : parentCommitIds) {
-                if (!checkedCommitIds.contains(parentCommitId)) {
-                    checkedCommitIds.add(parentCommitId);
-                    Commit parentCommit = Commit.fromFile(parentCommitId);
-                    queueToHoldCommits.add(parentCommit);
+                if (checkedCommitIds.contains(parentCommitId)) {
+                    continue;
                 }
+                checkedCommitIds.add(parentCommitId);
+                Commit parentCommit = Commit.fromFile(parentCommitId);
+                queueToHoldCommits.add(parentCommit);
             }
         }
     }
 
-    public static void find(String commes){
-        StringBuilder resultBuilder = new StringBuilder();
-        forEachCommit(commit -> {if(commit.getmessage().equals(commes)) {
-            resultBuilder.append(commit.getId()).append("\n");
-        }});
-        if (resultBuilder.length() == 0) {
-            exit("Found no commit with that message.");
-        }
-        System.out.print(resultBuilder);
+    /**
+     * Get a File instance from CWD by the name.
+     *
+     * @param fileName Name of the file
+     * @return File instance
+     */
+    private static File getFileFromCWD(String fileName) {
+        return Paths.get(fileName).isAbsolute()
+                ? new File(fileName)
+                : join(CWD, fileName);
     }
 
+
+
+    /**
+     * Add file to the staging area.
+     *
+     * @param fileName Name of the file
+     */
+    public void add(String fileName) {
+        File file = getFileFromCWD(fileName);
+        if (!file.exists()) {
+            exit("File does not exist.");
+        }
+        if (stagingArea().add(file)) {
+            stagingArea().save();
+        }
+    }
+
+    /**
+     * Perform a commit with message.
+     *
+     * @param msg Commit message
+     */
+    public void commit(String msg) {
+        commit(msg, null);
+    }
+
+    /**
+     * Perform a commit with message and two parents.
+     *
+     * @param msg          Commit message
+     * @param secondParent Second parent Commit SHA1 id
+     */
+    private void commit(String msg, String secondParent) {
+        if (stagingArea().isClean()) {
+            exit("No changes added to the commit.");
+        }
+        Map<String, String> newTrackedFilesMap = stagingArea().commit();
+        stagingArea().save();
+        List<String> parents = new ArrayList<>();
+        parents.add(HEADCommit.getId());
+        if (secondParent != null) {
+            parents.add(secondParent);
+        }
+        Commit newCommit = new Commit(msg, parents, newTrackedFilesMap);
+        newCommit.save();
+        setBranchHeadCommit(currentBranch(), newCommit.getId());
+    }
+
+    /**
+     * Remove file.
+     *
+     * @param fileName Name of the file
+     */
+    public void remove(String fileName) {
+        File file = getFileFromCWD(fileName);
+        if (stagingArea().remove(file)) {
+            stagingArea().save();
+        } else {
+            exit("No reason to remove the file.");
+        }
+    }
+
+    /**
+     * Print log of the current branch.
+     */
+    public void log() {
+        StringBuilder logBuilder = new StringBuilder();
+        Commit currentCommit = HEADCommit;
+        while (true) {
+            logBuilder.append(currentCommit.getLog()).append("\n");
+            List<String> parentCommitIds = currentCommit.getParents();
+            if (parentCommitIds.size() == 0) {
+                break;
+            }
+            String firstParentCommitId = parentCommitIds.get(0);
+            currentCommit = Commit.fromFile(firstParentCommitId);
+        }
+        System.out.print(logBuilder);
+    }
+
+    /**
+     * Print the status.
+     */
+    @SuppressWarnings("ConstantConditions")
     public void status() {
         StringBuilder statusBuilder = new StringBuilder();
 
+        // branches
         statusBuilder.append("=== Branches ===").append("\n");
-        statusBuilder.append("*").append(currentbranch()).append("\n");
-        String[] branchNames = breach_head_dir.list((dir, name) -> !name.equals(currentbranch()));
-        //排除当前分支
+        statusBuilder.append("*").append(currentBranch()).append("\n");
+        String[] branchNames = BRANCH_HEADS_DIR.list((dir, name) -> !name.equals(currentBranch()));
         Arrays.sort(branchNames);
-        //排序 Arrays.sort(branchNames);
-        for (String branchName : branchNames){
+        for (String branchName : branchNames) {
             statusBuilder.append(branchName).append("\n");
         }
         statusBuilder.append("\n");
+        // end
 
+
+        // staged files
         statusBuilder.append("=== Staged Files ===").append("\n");
-        Map<String,String> addstage = stagingArea().added;
+        Map<String,String> addstage = stagingArea().getAdded();
         Set<String> filenames = addstage.keySet();
         for(String filename : filenames){
             statusBuilder.append(filename).append("\n");
         }
         statusBuilder.append("\n");
 
+        // end
+
+        // removed files
         statusBuilder.append("=== Removed Files ===").append("\n");
-        Set<String> removestage = stagingArea().removed;
+        Set<String> removestage = stagingArea().getRemoved();
         for(String fileName : removestage){
             statusBuilder.append(fileName).append("\n");
         }
         statusBuilder.append("\n");
+        // end
 
+        // modifications not staged for commit
         statusBuilder.append("=== Modifications Not Staged For Commit ===").append("\n");
 
+
+        // end
+
+        // untracked files
         statusBuilder.append("=== Untracked Files ===").append("\n");
 
+
+        //end
+
         System.out.print(statusBuilder);
+
     }
 
-
-
-    private StagingArea stagingArea() {
-        if (index.exists()) {
-            return StagingArea.fromFile();
-        } else {
-            return new StagingArea();
-        }
+    public void checkout(String filename){
+        File file = getFileFromCWD(filename);
+        String commitid = readContentsAsString(file);
+        checkout(commitid,filename);
     }
+    public void checkout(String commitid, String filename){
+        File file = getFileFromCWD(filename);
+    }
+
+    public void checkoutBranch(String filename){
+
+    }
+
 }
-
