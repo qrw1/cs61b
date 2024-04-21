@@ -1,22 +1,30 @@
 package gitlet;
 
+// TODO: any imports you need here
+import static gitlet.Utils.*;
+import static gitlet.MyUtils.*;
+
+
 import java.io.File;
 import java.io.Serializable;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static gitlet.MyUtils.getObjectFile;
-import static gitlet.MyUtils.saveObjectFile;
-import static gitlet.Utils.readObject;
-import static gitlet.Utils.sha1;
-
-/**
- * The commit object.
+/** Represents a gitlet commit object.
+ *  TODO: It's a good idea to give a description here of what else this Class
+ *  does at a high level.
  *
- * @author Exuanbo
+ *  @author TODO
  */
-public class Commit implements Serializable {
+public class Commit implements Serializable{
+    /**
+     * TODO: add instance variables here.
+     *
+     * List all instance variables of the Commit class here with a useful
+     * comment above them describing what that variable represents and how that
+     * variable is used. We've provided one example for `message`.
+     */
 
     /**
      * The created date.
@@ -69,126 +77,69 @@ public class Commit implements Serializable {
         file = getObjectFile(id);
     }
 
-    /**
-     * Get a Commit instance from the file with the SHA1 id.
-     *
-     * @param id SHA1 id
-     * @return Commit instance
-     */
-    public static Commit fromFile(String id) {
-        return readObject(getObjectFile(id), Commit.class);
-    }
-
-    /**
-     * Generate a SHA1 id from timestamp, message, parents Array and tracked files Map.
-     *
-     * @return SHA1 id
-     */
-    private String generateId() {
-        return sha1(getTimestamp(), message, parents.toString(), tracked.toString());
-    }
-
-    /**
-     * Save this Commit instance to file in objects folder.
-     */
-    public void save() {
-        saveObjectFile(file, this);
-    }
-
-    /**
-     * Get the Date instance when the commit is created.
-     *
-     * @return Date instance
-     */
-    public Date getDate() {
-        return date;
-    }
-
-    /**
-     * Get the timestamp.
-     *
-     * @return Date and time
-     */
     public String getTimestamp() {
         // Thu Jan 1 00:00:00 1970 +0000
         DateFormat dateFormat = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z", Locale.ENGLISH);
         return dateFormat.format(date);
     }
 
-    /**
-     * Get the commit message.
-     *
-     * @return Commit message
-     */
-    public String getMessage() {
+    public Date getdate(){
+       return date;
+    }
+
+    public String getMessage(){
         return message;
     }
 
-    /**
-     * Get the parent commit ids.
-     *
-     * @return Array of parent commit ids.
-     */
-    public List<String> getParents() {
+    public String getId(){
+        return id;
+    }
+
+    public List<String> getParents(){
         return parents;
     }
 
-    /**
-     * Get the tracked files Map with file path as key and SHA1 id as value.
-     *
-     * @return Map with file path as key and SHA1 id as value
-     */
-    public Map<String, String> getTracked() {
+    public Map<String,String> getTracked(){
         return tracked;
     }
 
-    /**
-     * Restore the tracked file.
-     *
-     * @param filePath Path of the file
-     * @return true if file exists in commit
-     */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    public boolean restoreTracked(String filePath) {
-        String blobId = tracked.get(filePath);
-        if (blobId == null) {
+    public String generateId(){
+        return sha1(getTimestamp(), message, parents.toString(), tracked.toString());
+    }
+
+    public void save(){
+        saveObjectFile(file , this);
+    }
+
+    //从文件中读取指定 ID 对应的提交对象（Commit）
+    //会读取指定文件中的对象，并将其转换成 Commit 类型的对象，并返回该对象。
+    public static Commit fromFile(String id) {
+        return readObject(getObjectFile(id), Commit.class);
+    }
+
+    public boolean restoretrack(String filePath){
+        String blobid = tracked.get(filePath);
+        if(blobid == null){
             return false;
         }
-        Blob.fromFile(blobId).writeContentToSource();
+        Blob.fromFile(blobid).writeContentToSource();
         return true;
     }
 
-    /**
-     * Restore all tracked files, overwriting the existing ones.
-     */
     public void restoreAllTracked() {
         for (String blobId : tracked.values()) {
             Blob.fromFile(blobId).writeContentToSource();
         }
     }
 
-    /**
-     * Get the SHA1 id.
-     *
-     * @return SHA1 id
-     */
-    public String getId() {
-        return id;
-    }
-
-    /**
-     * Get the commit log.
-     *
-     * @return Log content
-     */
-    public String getLog() {
+    public String getlog(){
         StringBuilder logBuilder = new StringBuilder();
         logBuilder.append("===").append("\n");
         logBuilder.append("commit").append(" ").append(id).append("\n");
-        if (parents.size() > 1) {
+        if (parents.size() > 1){
             logBuilder.append("Merge:");
-            for (String parent : parents) {
-                logBuilder.append(" ").append(parent, 0, 7);
+            for(String parent : parents){
+                logBuilder.append(" ").append(parent, 0 ,7);
             }
             logBuilder.append("\n");
         }
@@ -196,4 +147,5 @@ public class Commit implements Serializable {
         logBuilder.append(message).append("\n");
         return logBuilder.toString();
     }
+
 }

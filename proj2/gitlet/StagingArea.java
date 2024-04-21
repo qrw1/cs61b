@@ -2,104 +2,89 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
-import static gitlet.MyUtils.rm;
-import static gitlet.Utils.readObject;
-import static gitlet.Utils.writeObject;
+import static gitlet.Utils.*;
+import static gitlet.MyUtils.*;
 
-/**
- * The staging area representation.
- *
- * @author Exuanbo
- */
 public class StagingArea implements Serializable {
+    private Map<String,String> added;
+    private Set<String> removed;
 
-    /**
-     * The added files Map with file path as key and SHA1 id as value.
-     */
-    private final Map<String, String> added = new HashMap<>();
+    //跟踪commit中的内容
+    //key = 文件路径， id = 值
+    private Map<String,String> tracked;
+   //如果文件的当前工作版本与当前提交中的版本相同，请不要暂存要添加的版本，
+   // 如果文件已存在，则将其从暂存区域中删除（当文件被更改、添加，
+   // 然后更改回其原始版本时可能会发生这种情况）。
+   // 如果该文件是在执行命令时暂存以进行删除的（请参阅 gitlet rm ）。
+    public boolean add(File file){
+        String  filePath = file.getPath();
 
-    /**
-     * The removed files Set with file path as key.
-     */
-    private final Set<String> removed = new HashSet<>();
+        Blob blob = new Blob(file);
+        String blobid = blob.getId();
 
-    /**
-     * The tracked files Map with file path as key and SHA1 id as value.
-     */
-    private transient Map<String, String> tracked;
+        String trackedid = tracked.get(filePath);
+        if(trackedid != null && blobid.equals(trackedid)){
+            if(added.remove(filePath) != null){
+                return true;
+            }
+            //Set 接口的 remove(Object obj) 方法的返回值是一个布尔值，
+            // 用于表示移除操作是否成功。如果集合中存在指定的元素并成功移除，
+            // 则返回 true；如果集合中不存在指定的元素，则返回 false。
+            return removed.remove(filePath);
+        }
 
-    /**
-     * Get a StagingArea instance from the file INDEX.
-     *
-     * @return StagingArea instance
-     */
-    public static StagingArea fromFile() {
-        return readObject(Repository.INDEX, StagingArea.class);
+        String prevBlobId = added.put(filePath,blobid);
+
+        if (prevBlobId != null && prevBlobId.equals(blobid)) {
+            //相等等于没变
+            return false;
+        }
+
+        if (!blob.getFile().exists()) {
+            blob.save();
+        }
+
+        return true;
     }
 
-    /**
-     * Save this instance to the file INDEX.
-     */
-    public void save() {
-        writeObject(Repository.INDEX, this);
+    public boolean remove(File file){
+        String  filePath = file.getPath();
+
+        String addedBlobId = added.remove(filePath);
+        if (addedBlobId != null) {
+            return true;
+        }
+
+        String trackedid = tracked.get(filePath);
+        if(trackedid != null){
+            if(file.exists()){
+                rm(file);
+            }
+            return removed.add(filePath);
+        }
+        return false;
     }
 
-    /**
-     * Get added files Map.
-     *
-     * @return Map with file path as key and SHA1 id as value.
-     */
-    public Map<String, String> getAdded() {
-        return added;
+    public void save(){
+        writeContents(Repository.INDEX,this);
     }
 
-    /**
-     * Get removed files Set.
-     *
-     * @return Set of files paths.
-     */
-    public Set<String> getRemoved() {
-        return removed;
+    public void setTracked(Map<String,String> map){
+        tracked = map;
     }
 
-    /**
-     * Set tracked files.
-     *
-     * @param filesMap Map with file path as key and SHA1 id as value.
-     */
-    public void setTracked(Map<String, String> filesMap) {
-        tracked = filesMap;
+    public void clear(){
+       added.clear();
+       removed.clear();
     }
 
-    /**
-     * Tells whether the staging area is clean,
-     * which means no file is added, modified, or removed.
-     *
-     * @return true if is clean
-     */
     public boolean isClean() {
         return added.isEmpty() && removed.isEmpty();
     }
 
-    /**
-     * Clear the staging area.
-     */
-    public void clear() {
-        added.clear();
-        removed.clear();
-    }
-
-    /**
-     * Perform a commit. Return tracked files Map after commit.
-     *
-     * @return Map with file path as key and SHA1 id as value.
-     */
-    public Map<String, String> commit() {
+    public Map<String, String> commit(){
         tracked.putAll(added);
         for (String filePath : removed) {
             tracked.remove(filePath);
@@ -108,59 +93,16 @@ public class StagingArea implements Serializable {
         return tracked;
     }
 
-    /**
-     * Add file to the staging area.
-     *
-     * @param file File instance
-     * @return true if the staging area is changed
-     */
-    public boolean add(File file) {
-        String filePath = file.getPath();
-
-        Blob blob = new Blob(file);
-        String blobId = blob.getId();
-
-        String trackedBlobId = tracked.get(filePath);
-        if (trackedBlobId != null) {
-            if (trackedBlobId.equals(blobId)) {
-                if (added.remove(filePath) != null) {
-                    return true;
-                }
-                return removed.remove(filePath);
-            }
-        }
-
-        String prevBlobId = added.put(filePath, blobId);
-        if (prevBlobId != null && prevBlobId.equals(blobId)) {
-            return false;
-        }
-
-        if (!blob.getFile().exists()) {
-            blob.save();
-        }
-        return true;
+    public static StagingArea fromFile(){
+        return readObject(Repository.INDEX, StagingArea.class);
     }
 
-    /**
-     * Remove file.
-     *
-     * @param file File instance
-     * @return true if the staging area is changed
-     */
-    public boolean remove(File file) {
-        String filePath = file.getPath();
-
-        String addedBlobId = added.remove(filePath);
-        if (addedBlobId != null) {
-            return true;
-        }
-
-        if (tracked.get(filePath) != null) {
-            if (file.exists()) {
-                rm(file);
-            }
-            return removed.add(filePath);
-        }
-        return false;
+    public Set<String> getRemoved(){
+        return removed;
     }
+
+    public Map<String,String> getAdded(){
+        return added;
+    }
+
 }
