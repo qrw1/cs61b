@@ -117,7 +117,8 @@ public class Commit implements Serializable{
         return readObject(getObjectFile(id), Commit.class);
     }
 
-    public boolean restoretrack(String filePath){
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public boolean restoreTracked(String  filePath){
         String blobid = tracked.get(filePath);
         if(blobid == null){
             return false;

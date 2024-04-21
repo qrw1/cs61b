@@ -362,22 +362,22 @@ public class Repository {
         return filemap;
     }
 
-    public static void checkout(String filename) {
+    public void checkout(String filename) {
         File file = getFile(filename);
-        if (!HEADCommit().restoretrack(file.getPath())) {
+        if (!HEADCommit().restoreTracked(file.getPath())) {
             exit("File does not exist in that commit.");
         }
     }
 
-    public static void checkout(String commitId, String filename) {
+    public void checkout(String commitId, String filename) {
         commitId = getActualCommitId(commitId);
         String filePath = getFile(filename).getPath();
-        if (!Commit.fromFile(commitId).restoretrack(filePath)) {
+        if (!Commit.fromFile(commitId).restoreTracked(filePath)) {
             exit("File does not exist in that commit.");
         }
 
     }
-
+    @SuppressWarnings("ConstantConditions")
     private static String getActualCommitId(String commitId) {
         if (commitId.length() < UID_LENGTH) {
             if (commitId.length() < 4) {
@@ -618,7 +618,7 @@ public class Repository {
     }
 
 
-
+    @SuppressWarnings("ConstantConditions")
     private Commit getLastCommonCommit (Commit a, Commit b){
             List<String> ancestorsA = new ArrayList<>();
             List<String> parentsid = new ArrayList<>();
