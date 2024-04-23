@@ -28,7 +28,7 @@ public class Blob implements Serializable {
     }
 
     public File getFile(){
-        return getFile();
+        return file;
     }
 
     public static String generateId(File sourceFile) {
