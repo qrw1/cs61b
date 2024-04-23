@@ -2,18 +2,21 @@ package gitlet;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
+import static gitlet.MyUtils.rm;
 import static gitlet.Utils.*;
-import static gitlet.MyUtils.*;
 
 public class StagingArea implements Serializable {
-    private Map<String,String> added;
-    private Set<String> removed;
+    private final Map<String,String> added = new HashMap<>();
+    private final Set<String> removed = new HashSet<>();
 
     //跟踪commit中的内容
     //key = 文件路径， id = 值
-    private Map<String,String> tracked;
+    private transient Map<String,String> tracked;
    //如果文件的当前工作版本与当前提交中的版本相同，请不要暂存要添加的版本，
    // 如果文件已存在，则将其从暂存区域中删除（当文件被更改、添加，
    // 然后更改回其原始版本时可能会发生这种情况）。

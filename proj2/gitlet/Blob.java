@@ -5,13 +5,14 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 
 import static gitlet.Utils.*;
-import static gitlet.MyUtils.*;
-
+import static gitlet.MyUtils.getObjectFile;
+import static gitlet.MyUtils.saveObjectFile;
+@SuppressWarnings("PrimitiveArrayArgumentToVarargsMethod")
 public class Blob implements Serializable {
 
-    private File source;
-    private byte[] content;
-    private String id;
+    private final File source;
+    private final byte[] content;
+    private final String id;
     private final File file;
 
     public Blob(File sourceFile) {

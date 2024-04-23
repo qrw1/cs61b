@@ -1,7 +1,7 @@
 package gitlet;
 
 
-import static gitlet.MyUtils.*;
+import static gitlet.MyUtils.exit;
 
 /** Driver class for Gitlet, a subset of the Git version-control system.
  *  @author TODO
