@@ -154,7 +154,7 @@ public class Repository {
         commit(msg, null);
     }
 
-    public void commit(String mes, String parent) {
+    private void commit(String mes, String parent) {
         if (stagingArea().isClean()) {
             exit("No changes added to the commit.");
         }
@@ -241,6 +241,14 @@ public class Repository {
         System.out.print(id);
     }
 
+    private static void appendFileNamesInOrder(StringBuilder stringBuilder, List<String> filePathsList) {
+        filePathsList.sort(String::compareTo);
+        for (String filePath : filePathsList) {
+            String fileName = Paths.get(filePath).getFileName().toString();
+            stringBuilder.append(fileName).append("\n");
+        }
+    }
+
     @SuppressWarnings("ConstantConditions")
     public void status() {
         StringBuilder statusBuilder = new StringBuilder();
@@ -248,39 +256,28 @@ public class Repository {
         // branches
         statusBuilder.append("=== Branches ===").append("\n");
         statusBuilder.append("*").append(currentBranch()).append("\n");
-        //获取了除了当前分支之外的所有分支的名称。
         String[] branchNames = BRANCH_HEADS_DIR.list((dir, name) -> !name.equals(currentBranch()));
-
         Arrays.sort(branchNames);
-        //排序 Arrays.sort(branchNames);
         for (String branchName : branchNames) {
             statusBuilder.append(branchName).append("\n");
         }
         statusBuilder.append("\n");
         // end
 
+        Map<String, String> addedFilesMap = stagingArea().getAdded();
+        Set<String> removedFilePathsSet = stagingArea().getRemoved();
 
         // staged files
         statusBuilder.append("=== Staged Files ===").append("\n");
-        Map<String, String> addStage = stagingArea().getAdded();
-        List<String> filenames = new ArrayList<>(addStage.keySet());
-        filenames.sort(String::compareTo);
-        for (String filename : filenames) {
-            statusBuilder.append(filename).append("\n");
-        }
+        List<String> added = new ArrayList<>(addedFilesMap.keySet());
+        appendFileNamesInOrder(statusBuilder, added);
         statusBuilder.append("\n");
-
         // end
 
         // removed files
         statusBuilder.append("=== Removed Files ===").append("\n");
-        Set<String> removestage = stagingArea().getRemoved();
-        //将Set传递给ArrayList的构造函数，它将自动将Set中的元素复制到新的ArrayList中。
-        List<String> fileNames = new ArrayList<>(removestage);
-        fileNames.sort(String::compareTo);
-        for (String fileName : fileNames) {
-            statusBuilder.append(fileName).append("\n");
-        }
+        List<String> removed = new ArrayList<>(addedFilesMap.keySet());
+        appendFileNamesInOrder(statusBuilder, removed);
         statusBuilder.append("\n");
         // end
 
@@ -292,64 +289,55 @@ public class Repository {
         Map<String, String> currentFilesMap = getCurrentFilesMap();
         Map<String, String> trackedFilesMap = HEADCommit().getTracked();
 
-        trackedFilesMap.putAll(addStage);
-        for (String filePath : removestage) {
+        trackedFilesMap.putAll(addedFilesMap);
+        for (String filePath : removedFilePathsSet) {
             trackedFilesMap.remove(filePath);
         }
-        //current可能被删除
-        List<String> trackeds = new ArrayList<>(trackedFilesMap.keySet());
 
-        for (String tracked : trackeds) {
-            String currentid = currentFilesMap.get(tracked);
-            String trackedid = trackedFilesMap.get(tracked);
-            //标记为待添加和被跟踪
-            if (currentid != null) {
-                if (!currentid.equals(trackedid)) {
-                    modifiedNotStageFilePaths.add(tracked);
+        for (Map.Entry<String, String> entry : trackedFilesMap.entrySet()) {
+            String filePath = entry.getKey();
+            String blobId = entry.getValue();
+
+            String currentFileBlobId = currentFilesMap.get(filePath);
+
+            if (currentFileBlobId != null) {
+                if (!currentFileBlobId.equals(blobId)) {
+                    // 1. Tracked in the current commit, changed in the working directory, but not staged; or
+                    // 2. Staged for addition, but with different contents than in the working directory.
+                    modifiedNotStageFilePaths.add(filePath);
                 }
-                currentFilesMap.remove(tracked);
-                //移除掉当前cwd中被跟踪文件
+                currentFilesMap.remove(filePath);
             } else {
-                //在cwd被删除
-                deletedNotStageFilePaths.add(tracked);
-                //要实现所有文件按字典排序
-                modifiedNotStageFilePaths.add(tracked);
+                // 3. Staged for addition, but deleted in the working directory; or
+                // 4. Not staged for removal, but tracked in the current commit and deleted from the working directory.
+                modifiedNotStageFilePaths.add(filePath);
+                deletedNotStageFilePaths.add(filePath);
             }
-
-            modifiedNotStageFilePaths.sort(String::compareTo);
-            //一个用于排序，一个用于分类
-            //而不是两个分别排序与分类
-
-            for (String filePath : modifiedNotStageFilePaths) {
-                String fileName = Paths.get(filePath).getFileName().toString();
-                statusBuilder.append(fileName);
-                if (deletedNotStageFilePaths.contains(filePath)) {
-                    statusBuilder.append(" ").append("(deleted)");
-                } else {
-                    statusBuilder.append(" ").append("(modified)");
-                }
-                statusBuilder.append("\n");
-            }
-
-
-            // end
-
-            // untracked files
-            //最终类别（“未跟踪文件”）是指存在于工作目录中但既未标记为待添加也未被跟踪的文件。
-            // 这包括已经标记为待删除，但在 Gitlet 不知情的情况下重新创建的文件
-            //已经在310处理
-            statusBuilder.append("=== Untracked Files ===").append("\n");
-            List<String> Trackeds = new ArrayList<>(currentFilesMap.keySet());
-            Trackeds.sort(String::compareTo);
-            for (String Tracked : Trackeds) {
-                String fileName = Paths.get(Tracked).getFileName().toString();
-                statusBuilder.append(fileName).append("\n");
-            }
-
-            //end
-
-            System.out.print(statusBuilder);
         }
+
+        modifiedNotStageFilePaths.sort(String::compareTo);
+
+        for (String filePath : modifiedNotStageFilePaths) {
+            String fileName = Paths.get(filePath).getFileName().toString();
+            statusBuilder.append(fileName);
+            if (deletedNotStageFilePaths.contains(filePath)) {
+                statusBuilder.append(" ").append("(deleted)");
+            } else {
+                statusBuilder.append(" ").append("(modified)");
+            }
+            statusBuilder.append("\n");
+        }
+        statusBuilder.append("\n");
+        // end
+
+        // untracked files
+        statusBuilder.append("=== Untracked Files ===").append("\n");
+        List<String> current = new ArrayList<>(currentFilesMap.keySet());
+        appendFileNamesInOrder(statusBuilder, current);
+        statusBuilder.append("\n");
+        // end
+
+        System.out.print(statusBuilder);
     }
 
     private static Map<String, String> getCurrentFilesMap() {
