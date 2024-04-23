@@ -21,36 +21,33 @@ public class StagingArea implements Serializable {
    // 如果文件已存在，则将其从暂存区域中删除（当文件被更改、添加，
    // 然后更改回其原始版本时可能会发生这种情况）。
    // 如果该文件是在执行命令时暂存以进行删除的（请参阅 gitlet rm ）。
-    public boolean add(File file){
-        String  filePath = file.getPath();
+   public boolean add(File file) {
+       String filePath = file.getPath();
 
-        Blob blob = new Blob(file);
-        String blobid = blob.getId();
+       Blob blob = new Blob(file);
+       String blobId = blob.getId();
 
-        String trackedid = tracked.get(filePath);
-        if(trackedid != null && blobid.equals(trackedid)){
-            if(added.remove(filePath) != null){
-                return true;
-            }
-            //Set 接口的 remove(Object obj) 方法的返回值是一个布尔值，
-            // 用于表示移除操作是否成功。如果集合中存在指定的元素并成功移除，
-            // 则返回 true；如果集合中不存在指定的元素，则返回 false。
-            return removed.remove(filePath);
-        }
+       String trackedBlobId = tracked.get(filePath);
+       if (trackedBlobId != null) {
+           if (trackedBlobId.equals(blobId)) {
+               if (added.remove(filePath) != null) {
+                   return true;
+               }
+               return removed.remove(filePath);
+           }
+       }
 
-        String prevBlobId = added.put(filePath,blobid);
+       String prevBlobId = added.put(filePath, blobId);
+       if (prevBlobId != null && prevBlobId.equals(blobId)) {
+           return false;
+       }
 
-        if (prevBlobId != null && prevBlobId.equals(blobid)) {
-            //相等等于没变
-            return false;
-        }
+       if (!blob.getFile().exists()) {
+           blob.save();
+       }
+       return true;
+   }
 
-        if (!blob.getFile().exists()) {
-            blob.save();
-        }
-
-        return true;
-    }
 
     public boolean remove(File file){
         String  filePath = file.getPath();
@@ -71,7 +68,7 @@ public class StagingArea implements Serializable {
     }
 
     public void save(){
-        writeContents(Repository.INDEX,this);
+        writeObject(Repository.INDEX,this);
     }
 
     public void setTracked(Map<String,String> map){
