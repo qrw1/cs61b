@@ -4,6 +4,7 @@ package gitlet;
 import java.io.File;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Consumer;
 
 import static gitlet.Utils.*;
 import static gitlet.MyUtils.*;
@@ -211,64 +212,89 @@ public class Repository {
         System.out.print(log);
     }
 
-    private static List<Commit> everycommit(){
-        List<Commit> commits = new ArrayList<>();
-        List<Commit> commit = new ArrayList<>();
-        File[] branchheadfiles = BRANCH_HEADS_DIR.listFiles();
-        Set<String> checkids = new HashSet<>();
-        Arrays.sort(branchheadfiles, Comparator.comparing(File::getName));
-        for(File branchheadfile : branchheadfiles){
-            String branchheadid = readContentsAsString(branchheadfile);
-            if(checkids.contains(branchheadid)){
+
+    private static void forEachCommitInOrder(Consumer<Commit> cb) {
+        Comparator<Commit> commitComparator = Comparator.comparing(Commit::getdate).reversed();
+        Queue<Commit> commitsPriorityQueue = new PriorityQueue<>(commitComparator);
+        forEachCommit(cb, commitsPriorityQueue);
+    }
+
+    /**
+     * Iterate all commits and execute callback function on each of them.
+     *
+     * @param cb Function that accepts Commit as a single argument
+     */
+    private static void forEachCommit(Consumer<Commit> cb) {
+        Queue<Commit> commitsQueue = new ArrayDeque<>();
+        forEachCommit(cb, commitsQueue);
+    }
+
+    /**
+     * Helper method to iterate all commits.
+     *
+     * @param cb                 Callback function executed on the current commit
+     * @param queueToHoldCommits New Queue instance to hold the commits while iterating
+     */
+    @SuppressWarnings("ConstantConditions")
+    private static void forEachCommit(Consumer<Commit> cb, Queue<Commit> queueToHoldCommits) {
+        Set<String> checkedCommitIds = new HashSet<>();
+
+        File[] branchHeadFiles = BRANCH_HEADS_DIR.listFiles();
+        Arrays.sort(branchHeadFiles, Comparator.comparing(File::getName));
+
+        for (File branchHeadFile : branchHeadFiles) {
+            String branchHeadCommitId = readContentsAsString(branchHeadFile);
+            if (checkedCommitIds.contains(branchHeadCommitId)) {
                 continue;
             }
-            checkids.add(branchheadid);
-            Commit branchheadcommit = Commit.fromFile(branchheadid);
-            commits.add(branchheadcommit);
-            commit.add(branchheadcommit);
+            checkedCommitIds.add(branchHeadCommitId);
+            Commit branchHeadCommit = Commit.fromFile(branchHeadCommitId);
+            queueToHoldCommits.add(branchHeadCommit);
         }
-        while (true){
-            Commit nextcommit = commits.removeFirst();
-            List<String> parentcommitids = nextcommit.getParents();
-            if (parentcommitids.size() == 0) {
+
+        while (true) {
+            Commit nextCommit = queueToHoldCommits.poll();
+            cb.accept(nextCommit);
+            List<String> parentCommitIds = nextCommit.getParents();
+            if (parentCommitIds.size() == 0) {
                 break;
             }
-            for(String praentcommitid : parentcommitids){
-                if(checkids.contains(praentcommitid)){
+            for (String parentCommitId : parentCommitIds) {
+                if (checkedCommitIds.contains(parentCommitId)) {
                     continue;
                 }
-                checkids.add(praentcommitid);
-                Commit parentCommit = Commit.fromFile(praentcommitid);
-                commits.add(parentCommit);
-                commit.add(parentCommit);
+                checkedCommitIds.add(parentCommitId);
+                Commit parentCommit = Commit.fromFile(parentCommitId);
+                queueToHoldCommits.add(parentCommit);
             }
-        }
-        return commit;
-    }
-
-
-
-
-    public void globalLog() {
-        List<Commit> commits = everycommit();
-        for (Commit commit : commits) {
-            System.out.println(commit.getlog());
         }
     }
 
 
-    public static void find(String mes) {
-        StringBuilder id = new StringBuilder();
-        List<Commit> commits = everycommit();
-        for (Commit commit : commits) {
-            if (commit.getMessage().equals(mes)) {
-                id.append(commit.getId()).append("\n");
+    public static void globalLog() {
+        StringBuilder logBuilder = new StringBuilder();
+        // As the project spec goes, the runtime should be O(N) where N is the number of commits ever made.
+        // But here I choose to log the commits in the order of created date, which has a runtime of O(NlogN).
+        forEachCommitInOrder(commit -> logBuilder.append(commit.getlog()).append("\n"));
+        System.out.print(logBuilder);
+    }
+
+    /**
+     * Print all commits that have the exact message.
+     *
+     * @param msg Content of the message
+     */
+    public static void find(String msg) {
+        StringBuilder resultBuilder = new StringBuilder();
+        forEachCommit(commit -> {
+            if (commit.getMessage().equals(msg)) {
+                resultBuilder.append(commit.getId()).append("\n");
             }
-        }
-        if(id.length() == 0){
+        });
+        if (resultBuilder.length() == 0) {
             exit("Found no commit with that message.");
         }
-        System.out.print(id);
+        System.out.print(resultBuilder);
     }
 
     private static void appendFileNamesInOrder(StringBuilder stringBuilder, List<String> filePathsList) {
