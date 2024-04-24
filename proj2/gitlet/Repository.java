@@ -211,21 +211,47 @@ public class Repository {
         System.out.print(log);
     }
 
-    private static List<String> forCommitInObject() {
-        // 获取对象目录
-        File objectsDir = Repository.OBJECTS_DIR;
-        // 获取所有对象文件名
-        return Utils.plainFilenamesIn(objectsDir);
-
+    private static List<Commit> everycommit(){
+        List<Commit> commits = new ArrayList<>();
+        List<Commit> commit = new ArrayList<>();
+        File[] branchheadfiles = BRANCH_HEADS_DIR.listFiles();
+        Set<String> checkids = new HashSet<>();
+        Arrays.sort(branchheadfiles, Comparator.comparing(File::getName));
+        for(File branchheadfile : branchheadfiles){
+            String branchheadid = readContentsAsString(branchheadfile);
+            if(checkids.contains(branchheadid)){
+                continue;
+            }
+            checkids.add(branchheadid);
+            Commit branchheadcommit = Commit.fromFile(branchheadid);
+            commits.add(branchheadcommit);
+            commit.add(branchheadcommit);
+        }
+        while (true){
+            Commit nextcommit = commits.removeFirst();
+            List<String> parentcommitids = nextcommit.getParents();
+            if (parentcommitids.size() == 0) {
+                break;
+            }
+            for(String praentcommitid : parentcommitids){
+                if(checkids.contains(praentcommitid)){
+                    continue;
+                }
+                checkids.add(praentcommitid);
+                Commit parentCommit = Commit.fromFile(praentcommitid);
+                commits.add(parentCommit);
+                commit.add(parentCommit);
+            }
+        }
+        return commit;
     }
 
+
+
+
     public void globalLog() {
-        List<String> objectFiles = forCommitInObject();
-        // 遍历所有对象文件
-        for (String fileName : objectFiles) {
-            // 读取提交对象
-            Commit commit = Commit.fromFile(fileName);
-            // 打印提交信息
+        List<Commit> commits = everycommit();
+        for (Commit commit : commits) {
             System.out.println(commit.getlog());
         }
     }
@@ -233,14 +259,14 @@ public class Repository {
 
     public static void find(String mes) {
         StringBuilder id = new StringBuilder();
-        List<String> objectFiles = forCommitInObject();
-        for (String fileName : objectFiles) {
-            // 读取提交对象
-            Commit commit = Commit.fromFile(fileName);
-
+        List<Commit> commits = everycommit();
+        for (Commit commit : commits) {
             if (commit.getMessage().equals(mes)) {
                 id.append(commit.getId()).append("\n");
             }
+        }
+        if(id.length() == 0){
+            exit("Found no commit with that message.");
         }
         System.out.print(id);
     }
@@ -280,7 +306,7 @@ public class Repository {
 
         // removed files
         statusBuilder.append("=== Removed Files ===").append("\n");
-        List<String> removed = new ArrayList<>(addedFilesMap.keySet());
+        List<String> removed = new ArrayList<>(removedFilePathsSet);
         appendFileNamesInOrder(statusBuilder, removed);
         statusBuilder.append("\n");
         // end
@@ -411,7 +437,7 @@ public class Repository {
         if (!targetBranchHeadFile.exists()) {
             exit("No such branch exists.");
         }
-        if (targetBranchHeadFile.equals(currentBranch())) {
+        if (branchname.equals(currentBranch())) {
             exit("No need to checkout the current branch.");
         }
         Commit targetBranchHeadCommit = getBranchHeadCommit(targetBranchHeadFile);
@@ -469,7 +495,7 @@ public class Repository {
         if (newbranchfile.exists()) {
             exit("A branch with that name already exists.");
         }
-        setBranchHeadCommit(newbranchfile, newbranchname);
+        setBranchHeadCommit(newbranchfile, HEADCommit().getId());
     }
 
     public static void rmBranch(String branchname) {
