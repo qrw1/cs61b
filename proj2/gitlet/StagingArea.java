@@ -37,6 +37,7 @@ public class StagingArea implements Serializable {
            }
        }
 
+
        String prevBlobId = added.put(filePath, blobId);
        if (prevBlobId != null && prevBlobId.equals(blobId)) {
            return false;
@@ -45,6 +46,7 @@ public class StagingArea implements Serializable {
        if (!blob.getFile().exists()) {
            blob.save();
        }
+
        return true;
    }
 

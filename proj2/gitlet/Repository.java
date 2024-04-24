@@ -44,6 +44,16 @@ public class Repository {
     //用于存放 Git 中的对象（object），包括提交、树、blob 等。
     public static final File HEAD = join(GITLET_DIR, "HEAD");
     public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
+    private static final StagingArea stagingArea() {
+        StagingArea s;
+        if(INDEX.exists()) {
+            s = StagingArea.fromFile();
+        }else {
+            s = new StagingArea();
+        }
+        s.setTracked(HEADCommit().getTracked());
+        return s;
+    }
 
 
     private static String currentBranch() {
@@ -78,14 +88,6 @@ public class Repository {
         return Commit.fromFile(HEADCommitId);
     }
 
-
-    private static StagingArea stagingArea() {
-        StagingArea s = INDEX.exists()
-                ? StagingArea.fromFile()
-                : new StagingArea();
-        s.setTracked(HEADCommit().getTracked());
-        return s;
-    }
 
 
     /* TODO: fill in the rest of this class. */
@@ -141,13 +143,13 @@ public class Repository {
 
     public void add(String filename) {
         File file = getFile(filename);
+        StagingArea stagingAreais = stagingArea();
         if (!file.exists()) {
             exit("File does not exist.");
         }
-        if (stagingArea().add(file)) {
-            stagingArea().save();
+        if (stagingAreais.add(file)) {
+            stagingAreais.save();
         }
-
     }
 
     public void commit(String msg) {
@@ -155,11 +157,12 @@ public class Repository {
     }
 
     private void commit(String mes, String parent) {
-        if (stagingArea().isClean()) {
+        StagingArea stagingAreais = stagingArea();
+        if (stagingAreais.isClean()) {
             exit("No changes added to the commit.");
         }
-        Map<String, String> newTrackedFilesMap = stagingArea().commit();
-        stagingArea().save();
+        Map<String, String> newTrackedFilesMap = stagingAreais.commit();
+        stagingAreais.save();
         List<String> parents = new ArrayList<>();
         //从head（head文件里面只储存id）里面找到id
         parents.add((HEADCommit().getId()));
@@ -184,8 +187,9 @@ public class Repository {
     //既未暂存，也未被头提交跟踪
     public void remove(String filename) {
         File file = getFile(filename);
-        if (stagingArea().remove(file)) {
-            stagingArea().save();
+        StagingArea stagingAreais = stagingArea();
+        if (stagingAreais.remove(file)) {
+            stagingAreais.save();
         } else {
             exit("No reason to remove the file.");
         }
@@ -417,9 +421,10 @@ public class Repository {
     }
 
     private static void checkoutCommit(Commit targetCommit) {
+        StagingArea stagingAreais = stagingArea();
         // 重装存储
-        stagingArea().clear();
-        stagingArea().save();
+        stagingAreais.clear();
+        stagingAreais.save();
         for (File file : currentfiles()) {
             rm(file);
         }
@@ -489,13 +494,14 @@ public class Repository {
 
     public void merge(String targetBranchName) {
         File targetBranchHeadFile = getBranchHeadFile(targetBranchName);
+        StagingArea stagingAreais = stagingArea();
         if (!targetBranchHeadFile.exists()) {
             exit("A branch with that name does not exist.");
         }
         if (targetBranchName.equals(currentBranch())) {
             exit("Cannot merge a branch with itself.");
         }
-        if (!stagingArea().isClean()) {
+        if (!stagingAreais.isClean()) {
             exit("You have uncommitted changes.");
         }
         Commit targetBranchHeadCommit = getBranchHeadCommit(targetBranchHeadFile);
@@ -533,14 +539,14 @@ public class Repository {
                         if (HEADCommitBlobId.equals(blobId)) { // not modified in the current branch
                             // case 1
                             Blob.fromFile(targetBranchHeadCommitBlobId).writeContentToSource();
-                            stagingArea().add(file);
+                            stagingAreais.add(file);
                         } else { // modified in the current branch
                             if (!HEADCommitBlobId.equals(targetBranchHeadCommitBlobId)) { // modified in different ways
                                 // case 8
                                 hasConflict = true;
                                 String conflictContent = getConflictContent(HEADCommitBlobId, targetBranchHeadCommitBlobId);
                                 writeContents(file, conflictContent);
-                                stagingArea().add(file);
+                                stagingAreais.add(file);
                             } // else modified in the same ways
                             // case 3
                         }
@@ -549,7 +555,7 @@ public class Repository {
                         hasConflict = true;
                         String conflictContent = getConflictContent(null, targetBranchHeadCommitBlobId);
                         writeContents(file, conflictContent);
-                        stagingArea().add(file);
+                        stagingAreais.add(file);
                     }
                 } // else not modified in the target branch
                 // case 2, case 7
@@ -557,13 +563,13 @@ public class Repository {
                 if (HEADCommitBlobId != null) { // exists in the current branch
                     if (HEADCommitBlobId.equals(blobId)) { // not modified in the current branch
                         // case 6
-                        stagingArea().remove(file);
+                        stagingAreais.remove(file);
                     } else { // modified in the current branch
                         // case 8
                         hasConflict = true;
                         String conflictContent = getConflictContent(HEADCommitBlobId, null);
                         writeContents(file, conflictContent);
-                        stagingArea().add(file);
+                        stagingAreais.add(file);
                     }
                 } // else deleted in both branches
                 // case 3
@@ -587,13 +593,13 @@ public class Repository {
                     hasConflict = true;
                     String conflictContent = getConflictContent(HEADCommitBlobId, targetBranchHeadCommitBlobId);
                     writeContents(targetBranchHeadCommitFile, conflictContent);
-                    stagingArea().add(targetBranchHeadCommitFile);
+                    stagingAreais.add(targetBranchHeadCommitFile);
                 } // else modified in the same ways
                 // case 3
             } else { // only added in the target branch
                 // case 5
                 Blob.fromFile(targetBranchHeadCommitBlobId).writeContentToSource();
-                stagingArea().add(targetBranchHeadCommitFile);
+                stagingAreais.add(targetBranchHeadCommitFile);
             }
         }
 
