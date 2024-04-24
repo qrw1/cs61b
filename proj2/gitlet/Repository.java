@@ -628,6 +628,7 @@ public class Repository {
                 stagingAreais.add(targetBranchHeadCommitFile);
             }
         }
+        //stagingAreais.save();
 
         String newCommitMessage = "Merged" + " " + targetBranchName + " " + "into" + " " + currentBranch() + ".";
         commit(newCommitMessage, targetBranchHeadCommit.getId());
