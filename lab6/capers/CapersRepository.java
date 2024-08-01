@@ -43,17 +43,18 @@ public class CapersRepository {
      */
     public static void writeStory(String text) {
         // TODO
-        File StoryFile = join(CAPERS_FOLDER,"story");
-        String content;
-        if(StoryFile.exists()){
-            String story = readContentsAsString(StoryFile);
-            content = story + "/n" + text;
-        }else {
-            StoryFile.mkdir();
-            content = text;
+        File Storyfile = join(CAPERS_FOLDER,"story");
+        String newStorycontent;
+        if(!Storyfile.exists()){
+            newStorycontent = text;
+        }else{
+            String storycontent = readContentsAsString(Storyfile);
+            newStorycontent = storycontent + "\n" + text;
         }
-        writeContents(StoryFile, content);
-        System.out.println(content);
+        writeContents(Storyfile, newStorycontent);//将text写入文件，
+        System.out.println(newStorycontent);
+
+
     }
 
     /**
