@@ -65,7 +65,7 @@ public class CapersRepository {
         // TODO
         Dog newdog = new Dog(name,breed,age);
         newdog.saveDog();
-        newdog.toString();
+        System.out.println(newdog);
     }
 
     /**
